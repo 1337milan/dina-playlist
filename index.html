@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>плейлист для дины</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080810;
+    --pink: #c06c84;
+    --pink-dim: rgba(192,108,132,0.12);
+    --white: #f0eae8;
+    --muted: rgba(240,234,232,0.35);
+    --border: rgba(192,108,132,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--bg); color:var(--white); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:999; opacity:0.6;
+  }
+  .blob { position:fixed; border-radius:50%; filter:blur(120px); pointer-events:none; z-index:0; opacity:0; animation:blobFade 3s ease forwards; }
+  .blob-1 { width:500px; height:500px; background:rgba(192,108,132,0.07); top:-200px; left:-100px; animation-delay:0.5s; }
+  .blob-2 { width:400px; height:400px; background:rgba(80,40,120,0.08); bottom:-150px; right:-100px; animation-delay:1s; }
+  .blob-3 { width:300px; height:300px; background:rgba(192,108,132,0.05); top:50%; left:60%; animation-delay:1.5s; }
+  @keyframes blobFade { to { opacity:1; } }
+  .particles-bg { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+  .dot { position:absolute; width:2px; height:2px; border-radius:50%; background:var(--pink); opacity:0; animation:floatDot linear infinite; }
+  @keyframes floatDot {
+    0% { opacity:0; transform:translateY(0) translateX(0); }
+    10% { opacity:0.4; }
+    90% { opacity:0.15; }
+    100% { opacity:0; transform:translateY(-100vh) translateX(20px); }
+  }
+  header { position:relative; z-index:10; padding:80px 40px 60px; text-align:center; opacity:0; transform:translateY(30px); animation:fadeUp 1.2s cubic-bezier(0.16,1,0.3,1) 0.3s forwards; }
+  .header-label { font-size:10px; letter-spacing:4px; text-transform:uppercase; color:var(--pink); margin-bottom:20px; opacity:0.8; }
+  header h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(42px,8vw,90px); font-weight:300; letter-spacing:-1px; line-height:1; }
+  header h1 em { font-style:italic; color:var(--pink); }
+  .header-sub { margin-top:16px; font-size:11px; color:var(--muted); letter-spacing:2px; }
+  .divider { width:1px; height:60px; background:linear-gradient(to bottom,transparent,var(--pink),transparent); margin:40px auto 0; opacity:0.4; }
+  .intro { position:relative; z-index:10; max-width:500px; margin:0 auto; padding:0 40px 80px; text-align:center; font-family:'Cormorant Garamond',serif; font-size:18px; font-style:italic; color:var(--muted); line-height:1.7; opacity:0; animation:fadeUp 1.2s cubic-bezier(0.16,1,0.3,1) 0.7s forwards; }
+  .cards { position:relative; z-index:10; max-width:780px; margin:0 auto; padding:0 24px 100px; display:flex; flex-direction:column; gap:2px; }
+
+  .card {
+    position:relative; border:1px solid var(--border); background:rgba(13,13,26,0.6);
+    backdrop-filter:blur(10px); padding:32px 36px; cursor:pointer;
+    transition:all 0.5s cubic-bezier(0.16,1,0.3,1); opacity:0; transform:translateY(20px);
+    overflow:hidden; user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  .card::before { content:''; position:absolute; inset:0; background:var(--pink-dim); opacity:0; transition:opacity 0.4s ease; }
+  .card:hover::before, .card.playing::before { opacity:1; }
+  .card::after { content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--pink); transform:scaleY(0); transform-origin:bottom; transition:transform 0.4s cubic-bezier(0.16,1,0.3,1); }
+  .card:hover::after, .card.playing::after { transform:scaleY(1); }
+  .card:hover, .card.playing { border-color:rgba(192,108,132,0.3); transform:translateX(6px); box-shadow:0 0 40px rgba(192,108,132,0.08); }
+  .card.visible { opacity:1; transform:translateY(0); }
+  .card.playing.visible { opacity:1; transform:translateX(6px); }
+
+  .card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:16px; }
+  .mood-tag { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--pink); padding:4px 10px; border:1px solid rgba(192,108,132,0.25); border-radius:20px; white-space:nowrap; flex-shrink:0; transition:all 0.3s ease; }
+  .card:hover .mood-tag, .card.playing .mood-tag { background:rgba(192,108,132,0.15); border-color:var(--pink); }
+  .song-title { font-family:'Cormorant Garamond',serif; font-size:clamp(22px,4vw,30px); font-weight:300; color:var(--white); line-height:1.2; flex:1; transition:color 0.3s ease; }
+  .card:hover .song-title, .card.playing .song-title { color:#fff; }
+  .artist { font-size:11px; color:var(--muted); letter-spacing:1px; margin-bottom:18px; }
+  .note { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:16px; color:rgba(240,234,232,0.5); line-height:1.6; padding-top:16px; border-top:1px solid var(--border); transition:color 0.3s ease; }
+  .card:hover .note, .card.playing .note { color:rgba(240,234,232,0.75); }
+
+  .player-bar { display:flex; align-items:center; gap:14px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); max-height:0; overflow:hidden; opacity:0; transition:max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease, padding-top 0.4s ease; }
+  .card.playing .player-bar { max-height:50px; opacity:1; }
+
+  .play-btn { width:32px; height:32px; border-radius:50%; border:1px solid rgba(192,108,132,0.4); background:transparent; color:var(--pink); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.3s ease; font-size:11px; position:relative; z-index:2; }
+  .play-btn:hover { background:rgba(192,108,132,0.15); border-color:var(--pink); }
+  .progress-wrap { flex:1; height:2px; background:rgba(192,108,132,0.15); border-radius:2px; cursor:pointer; position:relative; z-index:2; }
+  .progress-fill { height:100%; border-radius:2px; background:var(--pink); width:0%; transition:width 0.1s linear; }
+  .time-label { font-size:9px; color:var(--muted); letter-spacing:1px; flex-shrink:0; }
+
+  .wave-icon { display:none; align-items:center; gap:2px; height:14px; flex-shrink:0; }
+  .card.playing .wave-icon { display:flex; }
+  .wave-bar { width:2px; border-radius:2px; background:var(--pink); opacity:0.7; }
+  .wave-bar:nth-child(1) { animation:wave 0.8s ease-in-out infinite; height:6px; }
+  .wave-bar:nth-child(2) { animation:wave 0.8s ease-in-out infinite 0.15s; height:10px; }
+  .wave-bar:nth-child(3) { animation:wave 0.8s ease-in-out infinite 0.3s; height:7px; }
+  .wave-bar:nth-child(4) { animation:wave 0.8s ease-in-out infinite 0.1s; height:12px; }
+  .wave-bar:nth-child(5) { animation:wave 0.8s ease-in-out infinite 0.25s; height:5px; }
+  @keyframes wave { 0%,100% { transform:scaleY(1); } 50% { transform:scaleY(0.3); } }
+
+  footer { position:relative; z-index:10; text-align:center; padding:0 40px 80px; opacity:0; animation:fadeUp 1.2s ease 2s forwards; }
+  .footer-line { width:60px; height:1px; background:linear-gradient(to right,transparent,var(--pink),transparent); margin:0 auto 24px; opacity:0.3; }
+  .footer-text { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:20px; color:var(--muted); }
+  .footer-from { margin-top:12px; font-size:10px; letter-spacing:3px; color:var(--pink); opacity:0.6; text-transform:uppercase; }
+
+  @keyframes fadeUp { to { opacity:1; transform:translateY(0); } }
+
+  @media (max-width:600px) {
+    header { padding:60px 20px 40px; }
+    .cards { padding:0 16px 80px; }
+    .card { padding:24px 20px; }
+    .intro { padding:0 24px 60px; }
+    .card:hover { transform:translateX(3px); }
+    .card.playing.visible { transform:translateX(3px); }
+    .wave-icon { right:20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+<div class="particles-bg" id="particlesBg"></div>
+
+<header>
+  <p class="header-label">специально для тебя</p>
+  <h1>плейлист<br>для <em>дины</em></h1>
+  <p class="header-sub">нажми на карточку — и она заиграет</p>
+  <div class="divider"></div>
+</header>
+
+<p class="intro">
+  составил это для тебя<br>
+  каждый трек для отдельного момента<br>
+  просто найди свой
+</p>
+
+<div class="cards" id="cards">
+
+  <div class="card" data-src="01.mp3">
+    <div class="card-top">
+      <div><p class="song-title">девочка плачет</p><p class="artist">grechanik</p></div>
+      <span class="mood-tag">когда грустно</span>
+    </div>
+    <p class="note">ты сама сказала — под эту грустить любишь. пусть будет здесь, раз уж так</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="02.mp3">
+    <div class="card-top">
+      <div><p class="song-title">star shopping</p><p class="artist">lil peep</p></div>
+      <span class="mood-tag">поздно ночью</span>
+    </div>
+    <p class="note">это для тех ночей после смены, когда не спится и просто лежишь в темноте</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="03.mp3">
+    <div class="card-top">
+      <div><p class="song-title">worlds away</p><p class="artist">lil peep</p></div>
+      <span class="mood-tag">в дороге</span>
+    </div>
+    <p class="note">включай когда едешь куда то и смотришь в окно. она именно про это</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="04.mp3">
+    <div class="card-top">
+      <div><p class="song-title">розовое вино</p><p class="artist">элджей</p></div>
+      <span class="mood-tag">просто хорошо</span>
+    </div>
+    <p class="note">ты сама ее вспомнила — значит что то в ней есть. слушай когда настроение без причины хорошее</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="05.mp3">
+    <div class="card-top">
+      <div><p class="song-title">бигуди</p><p class="artist">иван дорн</p></div>
+      <span class="mood-tag">танцевать дома</span>
+    </div>
+    <p class="note">эта чтобы не просто слушать — а двигаться. включай когда убираешь дом до блеска</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="06.mp3">
+    <div class="card-top">
+      <div><p class="song-title">до утра</p><p class="artist">keendy</p></div>
+      <span class="mood-tag">когда устала</span>
+    </div>
+    <p class="note">после ночной смены, когда тело ломит и хочется просто лечь — вот эта</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="07.mp3">
+    <div class="card-top">
+      <div><p class="song-title">чернила</p><p class="artist">thomas mraz</p></div>
+      <span class="mood-tag">тихий вечер</span>
+    </div>
+    <p class="note">ты искала ее и не могла найти. теперь она здесь</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="08.mp3">
+    <div class="card-top">
+      <div><p class="song-title">bloody blade</p><p class="artist">juice wrld</p></div>
+      <span class="mood-tag">во всю громкость</span>
+    </div>
+    <p class="note">та самая. не надо объяснять</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="09.mp3">
+    <div class="card-top">
+      <div><p class="song-title">just in case</p><p class="artist">lil peep</p></div>
+      <span class="mood-tag">на всякий случай</span>
+    </div>
+    <p class="note">на всякий случай. иногда просто включаешь — и все становится немного легче</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card" data-src="10.mp3">
+    <div class="card-top">
+      <div><p class="song-title">просто напиши</p><p class="artist">— — —</p></div>
+      <span class="mood-tag">если совсем тяжело</span>
+    </div>
+    <p class="note">иногда не нужна песня. иногда нужен человек, ты знаешь кому написать</p>
+    <div class="player-bar">
+      <button class="play-btn">▶</button>
+      <div class="progress-wrap"><div class="progress-fill"></div></div>
+      <span class="time-label">0:00</span>
+      <div class="wave-icon"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-line"></div>
+  <p class="footer-text">слушай на здоровье, динуль</p>
+  <p class="footer-from">от милана — с теплом</p>
+</footer>
+
+<script>
+  const bg = document.getElementById('particlesBg');
+  for (let i = 0; i < 25; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.style.left = Math.random() * 100 + '%';
+    d.style.top = (Math.random() * 100 + 100) + '%';
+    d.style.animation = `floatDot ${15 + Math.random()*25}s ${Math.random()*20}s linear infinite`;
+    bg.appendChild(d);
+  }
+
+  const cards = document.querySelectorAll('.card');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { setTimeout(() => e.target.classList.add('visible'), 80); obs.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  cards.forEach(c => obs.observe(c));
+  setTimeout(() => {
+    cards.forEach((c, i) => { if (c.getBoundingClientRect().top < window.innerHeight) setTimeout(() => c.classList.add('visible'), i * 80); });
+  }, 800);
+
+  let curAudio = null, curCard = null;
+
+  function fmt(s) { const m = Math.floor(s/60), sec = Math.floor(s%60); return m+':'+(sec<10?'0':'')+sec; }
+
+  function stopAll() {
+    if (curAudio) { curAudio.pause(); curAudio.currentTime = 0; }
+    if (curCard) {
+      curCard.classList.remove('playing');
+      curCard.querySelector('.play-btn').textContent = '▶';
+      curCard.querySelector('.progress-fill').style.width = '0%';
+      curCard.querySelector('.time-label').textContent = '0:00';
+    }
+    curAudio = null; curCard = null;
+  }
+
+  function playCard(card) {
+    const src = card.getAttribute('data-src');
+    if (!src) return;
+    stopAll();
+    const audio = new Audio(src);
+    curAudio = audio; curCard = card;
+    card.classList.add('playing');
+    card.querySelector('.play-btn').textContent = '❚❚';
+    audio.addEventListener('timeupdate', () => {
+      if (!audio.duration) return;
+      card.querySelector('.progress-fill').style.width = (audio.currentTime/audio.duration*100) + '%';
+      card.querySelector('.time-label').textContent = fmt(audio.currentTime);
+    });
+    audio.addEventListener('ended', stopAll);
+    audio.addEventListener('error', () => {
+      card.querySelector('.play-btn').textContent = '✕';
+      card.querySelector('.time-label').textContent = 'нет файла';
+      setTimeout(() => { if (curCard === card) stopAll(); }, 1500);
+    });
+    audio.play().catch(() => {});
+  }
+
+  cards.forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.classList.contains('progress-wrap') || e.target.classList.contains('progress-fill')) {
+        if (curCard === card && curAudio && curAudio.duration) {
+          const wrap = card.querySelector('.progress-wrap');
+          const rect = wrap.getBoundingClientRect();
+          curAudio.currentTime = ((e.clientX - rect.left) / rect.width) * curAudio.duration;
+        }
+        return;
+      }
+      if (curCard === card && curAudio) {
+        if (curAudio.paused) { curAudio.play(); card.querySelector('.play-btn').textContent = '❚❚'; }
+        else { curAudio.pause(); card.querySelector('.play-btn').textContent = '▶'; }
+        return;
+      }
+      playCard(card);
+    });
+  });
+</script>
+</body>
+</html>
